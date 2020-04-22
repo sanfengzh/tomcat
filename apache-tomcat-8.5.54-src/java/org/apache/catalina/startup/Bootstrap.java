@@ -16,6 +16,13 @@
  */
 package org.apache.catalina.startup;
 
+import org.apache.catalina.Globals;
+import org.apache.catalina.security.SecurityClassLoad;
+import org.apache.catalina.startup.ClassLoaderFactory.Repository;
+import org.apache.catalina.startup.ClassLoaderFactory.RepositoryType;
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -26,13 +33,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.catalina.Globals;
-import org.apache.catalina.security.SecurityClassLoad;
-import org.apache.catalina.startup.ClassLoaderFactory.Repository;
-import org.apache.catalina.startup.ClassLoaderFactory.RepositoryType;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
 
 /**
  * Bootstrap loader for Catalina.  This application constructs a class loader
@@ -61,23 +61,34 @@ public final class Bootstrap {
 
     private static final Pattern PATH_PATTERN = Pattern.compile("(\".*?\")|(([^,])*)");
 
+    // 看看静态代码块里做了什么事情
+    // 静态代码块内其实主要是找到了 catalina.home 和 catalina.base
+    // catalina.base tomcat工作目录 指conf、logs、temp、webapps和work文件夹的父目录
+    // catalina.home 安装目录 其实是指bin和lib文件夹的父目录
+    // 利用这个特性，我们可以不必复制多个tomcat来启动多个实例
     static {
         // Will always be non-null
+        // 获取用户目录，就是当前代码所在的根目录，在当前这个项目的工程结构下，userDir=
         String userDir = System.getProperty("user.dir");
 
         // Home first
+        // 获取 catalina.home 的路径
         String home = System.getProperty(Globals.CATALINA_HOME_PROP);
         File homeFile = null;
 
+        // 如果设置了 catalina.home
         if (home != null) {
+            // new 一个文件句柄出来
             File f = new File(home);
             try {
+                // 获取 home 这个路径下所有的文件对象，homeFile就代表了 home 这个文件夹，但它内部持有了home文件夹下所有的文件对象
                 homeFile = f.getCanonicalFile();
             } catch (IOException ioe) {
                 homeFile = f.getAbsoluteFile();
             }
         }
 
+        // 如果没设置 catalina.home，就用bootstrap.jar的上层作为 catalina.home
         if (homeFile == null) {
             // First fall-back. See if current directory is a bin directory
             // in a normal Tomcat install
@@ -93,6 +104,7 @@ public final class Bootstrap {
             }
         }
 
+        // 如果还不行，就用根作为 catalina.home
         if (homeFile == null) {
             // Second fall-back. Use current directory
             File f = new File(userDir);
@@ -103,17 +115,21 @@ public final class Bootstrap {
             }
         }
 
+        // 最后把homeFile赋值给catalinaHomeFile
         catalinaHomeFile = homeFile;
         System.setProperty(
                 Globals.CATALINA_HOME_PROP, catalinaHomeFile.getPath());
 
         // Then base
+        // 获取 catalina.base
         String base = System.getProperty(Globals.CATALINA_BASE_PROP);
+        // 如果没有设置 catalina.base ,则将catalina.base 设为与catalina.home相同
         if (base == null) {
             catalinaBaseFile = catalinaHomeFile;
         } else {
             File baseFile = new File(base);
             try {
+                // 获取 base 这个路径下所有的文件对象，baseFile就代表了 base 这个文件夹，但它内部持有了base文件夹下所有的文件对象
                 baseFile = baseFile.getCanonicalFile();
             } catch (IOException ioe) {
                 baseFile = baseFile.getAbsoluteFile();
@@ -435,11 +451,15 @@ public final class Bootstrap {
      */
     public static void main(String args[]) {
 
+        // 阅读这个启动方法前,先去看下本类的静态代码块干了什么事情
+        // 暂时不清楚这里加锁是干嘛用的
         synchronized (daemonLock) {
             if (daemon == null) {
                 // Don't set daemon until init() has completed
+                // init()方法执行完以前不要设置daemon
                 Bootstrap bootstrap = new Bootstrap();
                 try {
+                    // 执行init方法
                     bootstrap.init();
                 } catch (Throwable t) {
                     handleThrowable(t);
