@@ -175,15 +175,18 @@ public final class Bootstrap {
 
     private ClassLoader createClassLoader(String name, ClassLoader parent)
         throws Exception {
-
+        // 拿到的value："${catalina.base}/lib","${catalina.base}/lib/*.jar","${catalina.home}/lib","${catalina.home}/lib/*.jar"
         String value = CatalinaProperties.getProperty(name + ".loader");
         if ((value == null) || (value.equals("")))
             return parent;
 
+        // 替换以后的value："/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib","/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib/*.jar","/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib","/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib/*.jar"
+        // ${用户名} 是实际的电脑用户名
         value = replace(value);
 
         List<Repository> repositories = new ArrayList<>();
 
+        // repositoryPaths：[/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib,/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib/*.jar,/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib,/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib/*.jar]
         String[] repositoryPaths = getPaths(value);
 
         for (String repository : repositoryPaths) {
@@ -209,6 +212,8 @@ public final class Bootstrap {
             }
         }
 
+        // repositories：[{"location":"/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib","type":"DIR"},{"location":"/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib/","type":"GLOB"},{"location":"/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib","type":"DIR"},{"location":"/Users/${用户名}/work/workspace/code/source/tomcat/apache-tomcat-8.5.54-src/lib/","type":"GLOB"}]
+        // parent：null
         return ClassLoaderFactory.createClassLoader(repositories, parent);
     }
 
@@ -452,8 +457,9 @@ public final class Bootstrap {
     public static void main(String args[]) {
 
         // 阅读这个启动方法前,先去看下本类的静态代码块干了什么事情
-        // 暂时不清楚这里加锁是干嘛用的
+        // 暂时不清楚这里加锁是干嘛用的，不过加锁了，这段代码也就没有了并发问题，最终只会有一个daemon对象
         synchronized (daemonLock) {
+            // daemon是volatile修饰的Bootstrap对象
             if (daemon == null) {
                 // Don't set daemon until init() has completed
                 // init()方法执行完以前不要设置daemon
@@ -466,6 +472,7 @@ public final class Bootstrap {
                     t.printStackTrace();
                     return;
                 }
+                // init方法执行完了，给daemon赋值
                 daemon = bootstrap;
             } else {
                 // When running as a service the call to stop will be on a new
