@@ -425,6 +425,7 @@ public final class Bootstrap {
         paramValues[0] = Boolean.valueOf(await);
         Method method =
             catalinaDaemon.getClass().getMethod("setAwait", paramTypes);
+        // 反射执行Catalina的setAwait方法
         method.invoke(catalinaDaemon, paramValues);
     }
 
@@ -488,6 +489,7 @@ public final class Bootstrap {
                 command = args[args.length - 1];
             }
 
+            // 命令解析和执行
             if (command.equals("startd")) {
                 args[args.length - 1] = "start";
                 daemon.load(args);
@@ -496,8 +498,12 @@ public final class Bootstrap {
                 args[args.length - 1] = "stop";
                 daemon.stop();
             } else if (command.equals("start")) {
+                // start 命令
+                // 执行setAwait,实际上是通过反射调用Catalina的setAwait方法
                 daemon.setAwait(true);
+                // 执行Catalina的load方法
                 daemon.load(args);
+                // 执行Catalina的start方法
                 daemon.start();
                 if (null == daemon.getServer()) {
                     System.exit(1);
