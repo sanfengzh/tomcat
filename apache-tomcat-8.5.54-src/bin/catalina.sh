@@ -143,12 +143,15 @@ done
 # Get standard environment variables
 PRGDIR=`dirname "$PRG"`
 
+# 设置CATALINA_HOME环境变量
 # Only set CATALINA_HOME if not already set
 [ -z "$CATALINA_HOME" ] && CATALINA_HOME=`cd "$PRGDIR/.." >/dev/null; pwd`
 
+# 设置CATALINA_BASE环境变量
 # Copy CATALINA_BASE from CATALINA_HOME if not already set
-[ -z "$CATALINA_BASE" ] && CATALINA_BASE="$CATALINA_HOME"
+653 v=1``[ -z "$CATALINA_BASE" ] && CATALINA_BASE="$CATALINA_HOME"
 
+# 设置CLASSPATH环境变量
 # Ensure that any user defined CLASSPATH variables are not used on startup,
 # but allow them to be specified in setenv.sh, in rare case when it is needed.
 CLASSPATH=
@@ -211,6 +214,7 @@ else
   fi
 fi
 
+# 在CLASSPATH后面追加bootstrap.jar、tomcat-juli.jar
 # Add on extra jar files to CLASSPATH
 if [ ! -z "$CLASSPATH" ] ; then
   CLASSPATH="$CLASSPATH":
@@ -481,6 +485,7 @@ elif [ "$1" = "start" ] ; then
       >> "$CATALINA_OUT" 2>&1 "&"
 
   else
+    # 执行Bootstrap类的main方法，参数是 start
     eval $_NOHUP "\"$_RUNJAVA\"" "\"$CATALINA_LOGGING_CONFIG\"" $LOGGING_MANAGER "$JAVA_OPTS" "$CATALINA_OPTS" \
       -D$ENDORSED_PROP="\"$JAVA_ENDORSED_DIRS\"" \
       -classpath "\"$CLASSPATH\"" \
