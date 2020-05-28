@@ -274,8 +274,11 @@ public class Catalina {
         long t1=System.currentTimeMillis();
         // Initialize the digester
         Digester digester = new Digester();
+        // 设置验证解析器标志
         digester.setValidating(false);
+        // 设置规则验证标志
         digester.setRulesValidation(true);
+        // 假的属性
         Map<Class<?>, List<String>> fakeAttributes = new HashMap<>();
         List<String> objectAttrs = new ArrayList<>();
         objectAttrs.add("className");
@@ -284,18 +287,25 @@ public class Catalina {
         List<String> contextAttrs = new ArrayList<>();
         contextAttrs.add("source");
         fakeAttributes.put(StandardContext.class, contextAttrs);
+        // 设置假属性
         digester.setFakeAttributes(fakeAttributes);
+        // 确定是否使用上下文类加载器解析/加载在各种规则中定义的类
         digester.setUseContextClassLoader(true);
 
+        // 配置将要使用的操作
+        // addObjectCreate：为指定的参数添加“对象创建”规则
         // Configure the actions we will be using
         digester.addObjectCreate("Server",
                                  "org.apache.catalina.core.StandardServer",
                                  "className");
+        // 为指定的参数添加“设置属性”规则
         digester.addSetProperties("Server");
+        // 为指定的参数添加“set next”规则
         digester.addSetNext("Server",
                             "setServer",
                             "org.apache.catalina.Server");
 
+        // StandardServer.GlobalNamingResources
         digester.addObjectCreate("Server/GlobalNamingResources",
                                  "org.apache.catalina.deploy.NamingResourcesImpl");
         digester.addSetProperties("Server/GlobalNamingResources");
@@ -303,6 +313,7 @@ public class Catalina {
                             "setGlobalNamingResources",
                             "org.apache.catalina.deploy.NamingResourcesImpl");
 
+        // StandardServer.addLifecycleListener
         digester.addObjectCreate("Server/Listener",
                                  null, // MUST be specified in the element
                                  "className");
@@ -311,6 +322,7 @@ public class Catalina {
                             "addLifecycleListener",
                             "org.apache.catalina.LifecycleListener");
 
+        // StandardServer.addService:StandardService
         digester.addObjectCreate("Server/Service",
                                  "org.apache.catalina.core.StandardService",
                                  "className");
@@ -319,6 +331,7 @@ public class Catalina {
                             "addService",
                             "org.apache.catalina.Service");
 
+        // StandardService.addLifecycleListener
         digester.addObjectCreate("Server/Service/Listener",
                                  null, // MUST be specified in the element
                                  "className");
@@ -327,6 +340,7 @@ public class Catalina {
                             "addLifecycleListener",
                             "org.apache.catalina.LifecycleListener");
 
+        // StandardService.addExecutor
         //Executor
         digester.addObjectCreate("Server/Service/Executor",
                          "org.apache.catalina.core.StandardThreadExecutor",
@@ -338,6 +352,7 @@ public class Catalina {
                             "org.apache.catalina.Executor");
 
 
+        // StandardService.addConnector
         digester.addRule("Server/Service/Connector",
                          new ConnectorCreateRule());
         digester.addRule("Server/Service/Connector",
@@ -346,6 +361,7 @@ public class Catalina {
                             "addConnector",
                             "org.apache.catalina.connector.Connector");
 
+        // Connector.addSslHostConfig
         digester.addObjectCreate("Server/Service/Connector/SSLHostConfig",
                                  "org.apache.tomcat.util.net.SSLHostConfig");
         digester.addSetProperties("Server/Service/Connector/SSLHostConfig");
@@ -353,6 +369,7 @@ public class Catalina {
                 "addSslHostConfig",
                 "org.apache.tomcat.util.net.SSLHostConfig");
 
+        // SSLHostConfig.addCertificate
         digester.addRule("Server/Service/Connector/SSLHostConfig/Certificate",
                          new CertificateCreateRule());
         digester.addRule("Server/Service/Connector/SSLHostConfig/Certificate",
@@ -361,6 +378,7 @@ public class Catalina {
                             "addCertificate",
                             "org.apache.tomcat.util.net.SSLHostConfigCertificate");
 
+        // SSLHostConfig.setOpenSslConf
         digester.addObjectCreate("Server/Service/Connector/SSLHostConfig/OpenSSLConf",
                                  "org.apache.tomcat.util.net.openssl.OpenSSLConf");
         digester.addSetProperties("Server/Service/Connector/SSLHostConfig/OpenSSLConf");
@@ -368,6 +386,7 @@ public class Catalina {
                             "setOpenSslConf",
                             "org.apache.tomcat.util.net.openssl.OpenSSLConf");
 
+        // OpenSSLConfCmd.addCmd
         digester.addObjectCreate("Server/Service/Connector/SSLHostConfig/OpenSSLConf/OpenSSLConfCmd",
                                  "org.apache.tomcat.util.net.openssl.OpenSSLConfCmd");
         digester.addSetProperties("Server/Service/Connector/SSLHostConfig/OpenSSLConf/OpenSSLConfCmd");
@@ -375,6 +394,7 @@ public class Catalina {
                             "addCmd",
                             "org.apache.tomcat.util.net.openssl.OpenSSLConfCmd");
 
+        // Connector.addLifecycleListener
         digester.addObjectCreate("Server/Service/Connector/Listener",
                                  null, // MUST be specified in the element
                                  "className");
@@ -383,6 +403,7 @@ public class Catalina {
                             "addLifecycleListener",
                             "org.apache.catalina.LifecycleListener");
 
+        // Connector.addUpgradeProtocol
         digester.addObjectCreate("Server/Service/Connector/UpgradeProtocol",
                                   null, // MUST be specified in the element
                                   "className");
@@ -391,6 +412,7 @@ public class Catalina {
                             "addUpgradeProtocol",
                             "org.apache.coyote.UpgradeProtocol");
 
+        // 注册规则集中定义的一组规则实例
         // Add RuleSets for nested elements
         digester.addRuleSet(new NamingRuleSet("Server/GlobalNamingResources/"));
         digester.addRuleSet(new EngineRuleSet("Server/Service/"));
@@ -542,6 +564,8 @@ public class Catalina {
 
         // 创建和配置将用于启动的Digester
         // 配置解析server.xml中各个标签的解析类
+        // Digeter是apache的common项目，作用是将XML转化成对象，使用者直接从对象中获取xml的节点信息
+        // Digester是对SAX的包装，它也是基于文件流来解析xml文件，只不过这些解析操作对用户是透明的
         // Create and execute our Digester
         Digester digester = createStartDigester();
 
@@ -608,7 +632,9 @@ public class Catalina {
 
             try {
                 inputSource.setByteStream(inputStream);
+                // 把Catalina作为一个顶级容器
                 digester.push(this);
+                // 解析过程会实例化各个组件,比如Server、Container、Connerctor等
                 digester.parse(inputSource);
             } catch (SAXParseException spe) {
                 log.warn("Catalina.start using " + getConfigFile() + ": " +
