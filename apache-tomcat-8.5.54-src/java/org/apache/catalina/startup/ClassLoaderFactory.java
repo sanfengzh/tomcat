@@ -16,6 +16,9 @@
  */
 package org.apache.catalina.startup;
 
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -27,9 +30,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
 
 /**
  * <p>Utility class for building class loaders for Catalina.  The factory
@@ -159,6 +159,8 @@ public final class ClassLoaderFactory {
         Set<URL> set = new LinkedHashSet<>();
 
         if (repositories != null) {
+            // 这个循环里对不同类型的Repository对象进行处理，将路径转换为URL类型
+            // 因为URL类型带有明显的协议，如：jar:xxx、file：xxx
             for (Repository repository : repositories)  {
                 if (repository.getType() == RepositoryType.URL) {
                     URL url = buildClassLoaderUrl(repository.getLocation());
@@ -217,6 +219,7 @@ public final class ClassLoaderFactory {
             }
         }
 
+        // 将对应的路径组成成URL
         // Construct the class loader itself
         final URL[] array = set.toArray(new URL[set.size()]);
         if (log.isDebugEnabled())
@@ -224,6 +227,7 @@ public final class ClassLoaderFactory {
                 log.debug("  location " + i + " is " + array[i]);
             }
 
+        // 在创建 URLClassLoader 是需要考虑 AccessController的影响
         return AccessController.doPrivileged(
                 new PrivilegedAction<URLClassLoader>() {
                     @Override

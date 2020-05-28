@@ -17,20 +17,6 @@
 package org.apache.catalina.startup;
 
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.Constructor;
-import java.net.ConnectException;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.logging.LogManager;
-
 import org.apache.catalina.Container;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleState;
@@ -49,6 +35,16 @@ import org.apache.tomcat.util.res.StringManager;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXParseException;
+
+import java.io.*;
+import java.lang.reflect.Constructor;
+import java.net.ConnectException;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.LogManager;
 
 
 /**
@@ -526,22 +522,26 @@ public class Catalina {
 
 
     /**
+     * 启动一个新的服务器实例
      * Start a new server instance.
      */
     public void load() {
-
+        // 防止重复加载
         if (loaded) {
             return;
         }
         loaded = true;
 
         long t1 = System.nanoTime();
-
+        // 创建 java.io.tmpdir 文件夹
         initDirs();
 
+        // 初始化jmx的环境变量
         // Before digester - it may be needed
         initNaming();
 
+        // 创建和配置将用于启动的Digester
+        // 配置解析server.xml中各个标签的解析类
         // Create and execute our Digester
         Digester digester = createStartDigester();
 
@@ -549,6 +549,7 @@ public class Catalina {
         InputStream inputStream = null;
         File file = null;
         try {
+            // 加载conf/server.xml配置文件，失败了就加载server-embed.xml
             try {
                 file = configFile();
                 inputStream = new FileInputStream(file);
@@ -627,6 +628,7 @@ public class Catalina {
             }
         }
 
+        // 这里的server在解析xml之后就会有值了，这是Server的Catalina信息
         getServer().setCatalina(this);
         getServer().setCatalinaHome(Bootstrap.getCatalinaHomeFile());
         getServer().setCatalinaBase(Bootstrap.getCatalinaBaseFile());
@@ -636,6 +638,7 @@ public class Catalina {
 
         // Start the new server
         try {
+            // 生命周期init方法
             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
@@ -668,6 +671,7 @@ public class Catalina {
 
 
     /**
+     * 启动一个新的服务器实例
      * Start a new server instance.
      */
     public void start() {
