@@ -676,10 +676,12 @@ public class Catalina {
      */
     public void start() {
 
+        // 如果server组件不存在，就重新执行load方法
         if (getServer() == null) {
             load();
         }
 
+        // 还是不存在就返回
         if (getServer() == null) {
             log.fatal("Cannot start server. Server instance is not configured.");
             return;
@@ -689,6 +691,7 @@ public class Catalina {
 
         // Start the new server
         try {
+            // 调用server的start方法
             getServer().start();
         } catch (LifecycleException e) {
             log.fatal(sm.getString("catalina.serverStartFail"), e);
@@ -705,6 +708,7 @@ public class Catalina {
             log.info("Server startup in " + ((t2 - t1) / 1000000) + " ms");
         }
 
+        // 注册关闭钩子
         // Register shutdown hook
         if (useShutdownHook) {
             if (shutdownHook == null) {
@@ -722,8 +726,11 @@ public class Catalina {
             }
         }
 
+        // Bootstrap中会设置await为true，目的在于让tomcat在shutdown端口阻塞监听关闭命令
         if (await) {
+            // 等待收到正确的关机命令，然后返回
             await();
+            // 停止现有的服务器实例
             stop();
         }
     }
