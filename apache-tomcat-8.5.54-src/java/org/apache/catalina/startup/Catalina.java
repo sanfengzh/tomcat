@@ -664,7 +664,7 @@ public class Catalina {
 
         // Start the new server
         try {
-            // 生命周期init方法
+            // 生命周期init方法，这个getServer()拿到的是StandardServer对象
             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
