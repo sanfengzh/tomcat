@@ -128,9 +128,9 @@ public abstract class LifecycleBase implements Lifecycle {
         }
 
         try {
-            // 正在初始化节点
+            // 正在初始化节点，这个方法体现出了观察者模式，方法内部，会调用每个观察者的方法。
             setStateInternal(LifecycleState.INITIALIZING, null, false);
-            // 抽象方法，由具体实例实现
+            // 抽象方法，由具体实例实现，这里使用了模板方法模式
             initInternal();
             // 初始化结束
             setStateInternal(LifecycleState.INITIALIZED, null, false);
@@ -179,6 +179,7 @@ public abstract class LifecycleBase implements Lifecycle {
 
         try {
             setStateInternal(LifecycleState.STARTING_PREP, null, false);
+            // 还是模板方法模式，调用StandardSever的startInternal方法
             startInternal();
             if (state.equals(LifecycleState.FAILED)) {
                 // This is a 'controlled' failure. The component put itself into the
@@ -419,6 +420,8 @@ public abstract class LifecycleBase implements Lifecycle {
         this.state = state;
         String lifecycleEvent = state.getLifecycleEvent();
         if (lifecycleEvent != null) {
+            // 这个方法内部会调用观察者的方法，
+            // 成为观察者需要实现LifecycleListener接口，实现lifecycleEvent方法，并在server.xml中配置成Listener，依据这个，可以变现自定义的观察者
             fireLifecycleEvent(lifecycleEvent, data);
         }
     }

@@ -16,25 +16,6 @@
  */
 package org.apache.coyote;
 
-import java.net.InetAddress;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanRegistration;
-import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-import javax.servlet.http.HttpUpgradeHandler;
-import javax.servlet.http.WebConnection;
-
 import org.apache.juli.logging.Log;
 import org.apache.tomcat.InstanceManager;
 import org.apache.tomcat.util.ExceptionUtils;
@@ -45,6 +26,19 @@ import org.apache.tomcat.util.net.AbstractEndpoint.Handler;
 import org.apache.tomcat.util.net.SocketEvent;
 import org.apache.tomcat.util.net.SocketWrapperBase;
 import org.apache.tomcat.util.res.StringManager;
+
+import javax.management.*;
+import javax.servlet.http.HttpUpgradeHandler;
+import javax.servlet.http.WebConnection;
+import java.net.InetAddress;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractProtocol<S> implements ProtocolHandler,
         MBeanRegistration {
@@ -593,7 +587,11 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         if (getLog().isInfoEnabled()) {
             getLog().info(sm.getString("abstractProtocolHandler.start", getName()));
         }
-
+        // endpoint的类型是AbstractEndpoint，而且是通过构造器传进来的，找一下哪里调用了构造器，实际上在server.xml Connector标签上配置了protocol属性，这里就是protocol配置的协议实现
+        // 这里可以回顾一下Catalin类中load()方法调用createStartDigester()方法时解析Connector的策略，
+        // 在ConnectorCreateRule.begin()方法中new Connector实例时，会根据server.xml中Connector标签配置的protocol属性选择相应ProtocolHandlerName，默认配置会选择org.apache.coyote.http11.Http11NioProtocol
+        // 然后通过反射，获取实例，实例对象赋值给Connector.protocolHandler属性
+        // 在默认配置的server.xml中，这里endpoint就是NioEndpoint
         endpoint.start();
 
         // Start timeout thread
@@ -1165,6 +1163,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         public void run() {
 
             // Loop until we receive a shutdown command
+            // 循环，知道收到关机命令
             while (asyncTimeoutRunning) {
                 try {
                     Thread.sleep(1000);
@@ -1177,6 +1176,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                 }
 
                 // Loop if endpoint is paused
+                // 如果endpoint paused就循环
                 while (endpoint.isPaused() && asyncTimeoutRunning) {
                     try {
                         Thread.sleep(1000);

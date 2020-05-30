@@ -16,17 +16,6 @@
  */
 package org.apache.catalina.connector;
 
-import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Locale;
-
-import javax.management.ObjectName;
-
 import org.apache.catalina.Globals;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleState;
@@ -46,6 +35,16 @@ import org.apache.tomcat.util.buf.EncodedSolidusHandling;
 import org.apache.tomcat.util.net.SSLHostConfig;
 import org.apache.tomcat.util.net.openssl.OpenSSLImplementation;
 import org.apache.tomcat.util.res.StringManager;
+
+import javax.management.ObjectName;
+import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Locale;
 
 
 /**
@@ -82,6 +81,7 @@ public class Connector extends LifecycleMBeanBase  {
         ProtocolHandler p = null;
         try {
             Class<?> clazz = Class.forName(protocolHandlerClassName);
+            // 反射创建实例,默认配置下反射的是org.apache.coyote.http11.Http11NioProtocol
             p = (ProtocolHandler) clazz.getConstructor().newInstance();
         } catch (Exception e) {
             log.error(sm.getString(
@@ -1027,6 +1027,7 @@ public class Connector extends LifecycleMBeanBase  {
         super.initInternal();
 
         // Initialize adapter
+        // 初始化 adapter
         adapter = new CoyoteAdapter(this);
         protocolHandler.setAdapter(adapter);
 
@@ -1080,6 +1081,7 @@ public class Connector extends LifecycleMBeanBase  {
         setState(LifecycleState.STARTING);
 
         try {
+            // 这里不是LifeCycle中的方法了，在AbstractProtocol中实现了这个而方法
             protocolHandler.start();
         } catch (Exception e) {
             throw new LifecycleException(

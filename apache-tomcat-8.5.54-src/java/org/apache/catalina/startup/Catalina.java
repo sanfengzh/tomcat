@@ -722,6 +722,7 @@ public class Catalina {
         } catch (LifecycleException e) {
             log.fatal(sm.getString("catalina.serverStartFail"), e);
             try {
+                // 发生异常，调用destry方法
                 getServer().destroy();
             } catch (LifecycleException e1) {
                 log.debug("destroy() failed for failed Server ", e1);
