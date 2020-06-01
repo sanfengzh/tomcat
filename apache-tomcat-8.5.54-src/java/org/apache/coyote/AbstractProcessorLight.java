@@ -16,16 +16,16 @@
  */
 package org.apache.coyote;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
-
 import org.apache.juli.logging.Log;
 import org.apache.tomcat.util.net.AbstractEndpoint.Handler.SocketState;
 import org.apache.tomcat.util.net.DispatchType;
 import org.apache.tomcat.util.net.SocketEvent;
 import org.apache.tomcat.util.net.SocketWrapperBase;
+
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * This is a light-weight abstract processor implementation that is intended as
@@ -49,6 +49,9 @@ public abstract class AbstractProcessorLight implements Processor {
                 if (getLog().isDebugEnabled()) {
                     getLog().debug("Processing dispatch type: [" + nextDispatch + "]");
                 }
+                // 处理不在标准HTTP模式下的正在处理中的请求
+                // 目前使用的包括Servelt 3.0异步和HTTP升级连接
+                // 将来可能会增加更多的用途，这些通常以HTTP请求开始
                 state = dispatch(nextDispatch.getSocketStatus());
                 if (!dispatches.hasNext()) {
                     state = checkForPipelinedData(state, socketWrapper);
@@ -62,6 +65,7 @@ public abstract class AbstractProcessorLight implements Processor {
                 // Extra write event likely after async, ignore
                 state = SocketState.LONG;
             } else if (status == SocketEvent.OPEN_READ) {
+                // 调用service方法
                 state = service(socketWrapper);
             } else if (status == SocketEvent.CONNECT_FAIL) {
                 logAccess(socketWrapper);

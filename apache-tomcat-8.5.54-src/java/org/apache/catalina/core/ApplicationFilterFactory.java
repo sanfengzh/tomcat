@@ -16,14 +16,14 @@
  */
 package org.apache.catalina.core;
 
-import javax.servlet.DispatcherType;
-import javax.servlet.Servlet;
-import javax.servlet.ServletRequest;
-
 import org.apache.catalina.Globals;
 import org.apache.catalina.Wrapper;
 import org.apache.catalina.connector.Request;
 import org.apache.tomcat.util.descriptor.web.FilterMap;
+
+import javax.servlet.DispatcherType;
+import javax.servlet.Servlet;
+import javax.servlet.ServletRequest;
 
 /**
  * Factory for the creation and caching of Filters and creation
@@ -43,28 +43,35 @@ public final class ApplicationFilterFactory {
      * Construct a FilterChain implementation that will wrap the execution of
      * the specified servlet instance.
      *
-     * @param request The servlet request we are processing
-     * @param wrapper The wrapper managing the servlet instance
-     * @param servlet The servlet instance to be wrapped
+     * 构造一个FilterChain实现，它将封装指定servlet实例的执行
+     *
+     * @param request The servlet request we are processing 正在处理的servlet请求，javax.servlet.ServletRequest
+     * @param wrapper The wrapper managing the servlet instance 管理servlet实例的包装器  org.apache.catalina.Wrapper
+     * @param servlet The servlet instance to be wrapped 要包装的servlet实例 javax.servlet.Servlet
      *
      * @return The configured FilterChain instance or null if none is to be
-     *         executed.
+     *         executed. 配置的FilterChain实例，如果不执行，则为null
      */
     public static ApplicationFilterChain createFilterChain(ServletRequest request,
             Wrapper wrapper, Servlet servlet) {
 
         // If there is no servlet to execute, return null
+        // 如果没有要执行的servlet，返回null
         if (servlet == null)
             return null;
 
         // Create and initialize a filter chain object
+        // 创建并初始化过滤器链对象
         ApplicationFilterChain filterChain = null;
+        // 这里request是org.apache.catalina.connector.Request
         if (request instanceof Request) {
             Request req = (Request) request;
+            // SecurityManager是否打开
             if (Globals.IS_SECURITY_ENABLED) {
                 // Security: Do not recycle
                 filterChain = new ApplicationFilterChain();
             } else {
+                // 从请求中获取ApplicationFilterChain，也就是回收的
                 filterChain = (ApplicationFilterChain) req.getFilterChain();
                 if (filterChain == null) {
                     filterChain = new ApplicationFilterChain();
@@ -73,21 +80,27 @@ public final class ApplicationFilterFactory {
             }
         } else {
             // Request dispatcher in use
+            // 正在使用的请求调度程序，ApplicationDispatcher调用过来的
             filterChain = new ApplicationFilterChain();
         }
 
+        // 设置将在这个链的末尾执行servlet
         filterChain.setServlet(servlet);
+        // 关联的servlet实例是否支持异步处理
         filterChain.setServletSupportsAsync(wrapper.isAsyncSupported());
 
         // Acquire the filter mappings for this Context
+        // 获取此上下文的过滤器映射
         StandardContext context = (StandardContext) wrapper.getParent();
         FilterMap filterMaps[] = context.findFilterMaps();
 
         // If there are no filter mappings, we are done
+        // 如果没有过滤器映射，就完成了
         if ((filterMaps == null) || (filterMaps.length == 0))
             return filterChain;
 
         // Acquire the information we will need to match filter mappings
+        // 获取匹配筛选器所需的信息
         DispatcherType dispatcher =
                 (DispatcherType) request.getAttribute(Globals.DISPATCHER_TYPE_ATTR);
 
@@ -96,38 +109,48 @@ public final class ApplicationFilterFactory {
         if (attribute != null){
             requestPath = attribute.toString();
         }
-
+        // 返回描述此容器的名称字符串
         String servletName = wrapper.getName();
 
         // Add the relevant path-mapped filters to this filter chain
+        // 将相关的路径映射过滤器添加到此过滤器链
         for (int i = 0; i < filterMaps.length; i++) {
+            // dispatcher类型与filterMap中指定的dispatcherl类型是否匹配
             if (!matchDispatcher(filterMaps[i] ,dispatcher)) {
                 continue;
             }
+            // 上下文相关的请求路径符合筛选器映射的要求
             if (!matchFiltersURL(filterMaps[i], requestPath))
                 continue;
+            // 从上下文context中获取ApplicationFilterConfig
             ApplicationFilterConfig filterConfig = (ApplicationFilterConfig)
                 context.findFilterConfig(filterMaps[i].getFilterName());
             if (filterConfig == null) {
                 // FIXME - log configuration problem
                 continue;
             }
+            // 把过滤器添加到将要在此链中执行的过滤器集中
             filterChain.addFilter(filterConfig);
         }
 
         // Add filters that match on servlet name second
+        // 添加与过滤器名称第二次匹配的过滤器
         for (int i = 0; i < filterMaps.length; i++) {
+            // dispatcher类型与filterMap中指定的dispatcherl类型是否匹配
             if (!matchDispatcher(filterMaps[i] ,dispatcher)) {
                 continue;
             }
+            // 上下文相关的请求路径符合筛选器映射的要求
             if (!matchFiltersServlet(filterMaps[i], servletName))
                 continue;
+            // 从上下文context中获取ApplicationFilterConfig
             ApplicationFilterConfig filterConfig = (ApplicationFilterConfig)
                 context.findFilterConfig(filterMaps[i].getFilterName());
             if (filterConfig == null) {
                 // FIXME - log configuration problem
                 continue;
             }
+            // 把过滤器添加到将要在此链中执行的过滤器集中
             filterChain.addFilter(filterConfig);
         }
 

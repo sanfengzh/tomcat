@@ -16,41 +16,7 @@
  */
 package org.apache.catalina.core;
 
-import java.io.PrintStream;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Stack;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import javax.management.ListenerNotFoundException;
-import javax.management.MBeanNotificationInfo;
-import javax.management.Notification;
-import javax.management.NotificationBroadcasterSupport;
-import javax.management.NotificationEmitter;
-import javax.management.NotificationFilter;
-import javax.management.NotificationListener;
-import javax.management.ObjectName;
-import javax.servlet.MultipartConfigElement;
-import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.SingleThreadModel;
-import javax.servlet.UnavailableException;
-import javax.servlet.annotation.MultipartConfig;
-
-import org.apache.catalina.Container;
-import org.apache.catalina.ContainerServlet;
-import org.apache.catalina.Context;
-import org.apache.catalina.Globals;
-import org.apache.catalina.LifecycleException;
-import org.apache.catalina.LifecycleState;
-import org.apache.catalina.Wrapper;
+import org.apache.catalina.*;
 import org.apache.catalina.security.SecurityUtil;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -60,6 +26,15 @@ import org.apache.tomcat.util.ExceptionUtils;
 import org.apache.tomcat.util.log.SystemLogHandler;
 import org.apache.tomcat.util.modeler.Registry;
 import org.apache.tomcat.util.modeler.Util;
+
+import javax.management.*;
+import javax.servlet.*;
+import javax.servlet.annotation.MultipartConfig;
+import java.io.PrintStream;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Standard implementation of the <b>Wrapper</b> interface that represents
@@ -736,11 +711,17 @@ public class StandardWrapper extends ContainerBase
      * @exception ServletException if the servlet init() method threw
      *  an exception
      * @exception ServletException if a loading error occurs
+     *
+     * 分配此servlet的初始化实例，该实例已准备好调用其service()方法
+     * 如果servlet类没有实现SingleThreadMode，则可能立即返回初始化的实例
+     * 如果servlet实现了SingleThreadMode，
+     * 包装器必须确认在调用deallocate()释放该实例之前不会再次分配该实例
      */
     @Override
     public Servlet allocate() throws ServletException {
 
         // If we are currently unloading this servlet, throw an exception
+        // 如果当前正在卸载此servlet，就抛出异常
         if (unloading) {
             throw new ServletException(sm.getString("standardWrapper.unloading", getName()));
         }
@@ -748,10 +729,15 @@ public class StandardWrapper extends ContainerBase
         boolean newInstance = false;
 
         // If not SingleThreadedModel, return the same instance every time
+        // 如果不是singleThreadMode，则每次返回相同的实例
+        // singleThreadModel:这个servlet是否实现了SingleThreadModel接口?,这个接口已经被弃用了。
+        // 也就是说实现了SingleThreadModel接口，每次都返回不同的servlet
         if (!singleThreadModel) {
             // Load and initialize our instance if necessary
+            // 如果需要，加载并初始化我们的实例
             if (instance == null || !instanceInitialized) {
                 synchronized (this) {
+                    // 如果没有实例的话，加载servlet
                     if (instance == null) {
                         try {
                             if (log.isDebugEnabled()) {
@@ -775,6 +761,7 @@ public class StandardWrapper extends ContainerBase
                             throw new ServletException(sm.getString("standardWrapper.allocate"), e);
                         }
                     }
+                    // 如果没有初始化的话，初始化servlet
                     if (!instanceInitialized) {
                         initServlet(instance);
                     }
@@ -852,6 +839,7 @@ public class StandardWrapper extends ContainerBase
         }
 
         // Unlock and free this instance
+        // 解锁并释放此实例
         synchronized (instancePool) {
             countAllocated.decrementAndGet();
             instancePool.push(servlet);
@@ -982,12 +970,15 @@ public class StandardWrapper extends ContainerBase
      */
     @Override
     public synchronized void load() throws ServletException {
+        // 加载servlet
         instance = loadServlet();
 
+        // 如果没有初始化的话，就初始化servlet
         if (!instanceInitialized) {
             initServlet(instance);
         }
 
+        // jsfServlet额外处理
         if (isJspServlet) {
             StringBuilder oname = new StringBuilder(getDomain());
 

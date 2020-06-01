@@ -16,33 +16,8 @@
  */
 package org.apache.coyote.http11;
 
-import java.io.IOException;
-import java.io.InterruptedIOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Pattern;
-
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.coyote.AbstractProcessor;
-import org.apache.coyote.ActionCode;
-import org.apache.coyote.ErrorState;
-import org.apache.coyote.Request;
-import org.apache.coyote.RequestInfo;
-import org.apache.coyote.UpgradeProtocol;
-import org.apache.coyote.UpgradeToken;
-import org.apache.coyote.http11.filters.BufferedInputFilter;
-import org.apache.coyote.http11.filters.ChunkedInputFilter;
-import org.apache.coyote.http11.filters.ChunkedOutputFilter;
-import org.apache.coyote.http11.filters.GzipOutputFilter;
-import org.apache.coyote.http11.filters.IdentityInputFilter;
-import org.apache.coyote.http11.filters.IdentityOutputFilter;
-import org.apache.coyote.http11.filters.SavedRequestInputFilter;
-import org.apache.coyote.http11.filters.VoidInputFilter;
-import org.apache.coyote.http11.filters.VoidOutputFilter;
+import org.apache.coyote.*;
+import org.apache.coyote.http11.filters.*;
 import org.apache.coyote.http11.upgrade.InternalHttpUpgradeHandler;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -55,14 +30,19 @@ import org.apache.tomcat.util.http.MimeHeaders;
 import org.apache.tomcat.util.http.parser.HttpParser;
 import org.apache.tomcat.util.http.parser.TokenList;
 import org.apache.tomcat.util.log.UserDataHelper;
-import org.apache.tomcat.util.net.AbstractEndpoint;
+import org.apache.tomcat.util.net.*;
 import org.apache.tomcat.util.net.AbstractEndpoint.Handler.SocketState;
-import org.apache.tomcat.util.net.SSLSupport;
-import org.apache.tomcat.util.net.SendfileDataBase;
-import org.apache.tomcat.util.net.SendfileKeepAliveState;
-import org.apache.tomcat.util.net.SendfileState;
-import org.apache.tomcat.util.net.SocketWrapperBase;
 import org.apache.tomcat.util.res.StringManager;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 public class Http11Processor extends AbstractProcessor {
 
@@ -481,10 +461,14 @@ public class Http11Processor extends AbstractProcessor {
     @Override
     public SocketState service(SocketWrapperBase<?> socketWrapper)
         throws IOException {
+        // request: org.apache.coyote.Request
+        // 结构，其中包含请求和相应对象
         RequestInfo rp = request.getRequestProcessor();
+        // 解析状态
         rp.setStage(org.apache.coyote.Constants.STAGE_PARSE);
 
         // Setting up the I/O
+        // 初始化输入输出流
         setSocketWrapper(socketWrapper);
 
         // Flags
@@ -494,10 +478,12 @@ public class Http11Processor extends AbstractProcessor {
         boolean keptAlive = false;
         SendfileState sendfileState = SendfileState.DONE;
 
+        // 没有错误状态； keepAlive = true;同步的；非更新HTTP连接后使用的新协议的实例；文件处理完毕；没有被暂停
         while (!getErrorState().isError() && keepAlive && !isAsync() && upgradeToken == null &&
                 sendfileState == SendfileState.DONE && !endpoint.isPaused()) {
 
             // Parsing the request header
+            // 解析请求头
             try {
                 if (!inputBuffer.parseRequestLine(keptAlive)) {
                     if (inputBuffer.getParsingRequestLinePhase() == -1) {
@@ -514,6 +500,8 @@ public class Http11Processor extends AbstractProcessor {
 
                 if (endpoint.isPaused()) {
                     // 503 - Service unavailable
+                    // response: org.apache.coyote.Response
+                    // 503错误
                     response.setStatus(503);
                     setErrorState(ErrorState.CLOSE_CLEAN, null);
                 } else {
@@ -560,6 +548,7 @@ public class Http11Processor extends AbstractProcessor {
             }
 
             // Has an upgrade been requested?
+            // 升级协议
             if (isConnectionToken(request.getMimeHeaders(), "upgrade")) {
                 // Check the protocol
                 String requestedProtocol = request.getHeader("Upgrade");
@@ -587,8 +576,10 @@ public class Http11Processor extends AbstractProcessor {
 
             if (getErrorState().isIoAllowed()) {
                 // Setting up filters, and parse some request headers
+                // 准备阶段
                 rp.setStage(org.apache.coyote.Constants.STAGE_PREPARE);
                 try {
+                    // 解析请求，组装request
                     prepareRequest();
                 } catch (Throwable t) {
                     ExceptionUtils.handleThrowable(t);
@@ -611,7 +602,9 @@ public class Http11Processor extends AbstractProcessor {
             // Process the request in the adapter
             if (getErrorState().isIoAllowed()) {
                 try {
+                    // 服务处理阶段
                     rp.setStage(org.apache.coyote.Constants.STAGE_SERVICE);
+                    // 获取CoyoteAdapter，调用其service方法
                     getAdapter().service(request, response);
                     // Handle when the response was committed before a serious
                     // error occurred.  Throwing a ServletException should both
@@ -647,6 +640,7 @@ public class Http11Processor extends AbstractProcessor {
             }
 
             // Finish the handling of the request
+            // 完成请求的处理
             rp.setStage(org.apache.coyote.Constants.STAGE_ENDINPUT);
             if (!isAsync()) {
                 // If this is an async request then the request ends when it has
@@ -678,12 +672,12 @@ public class Http11Processor extends AbstractProcessor {
                     socketWrapper.setReadTimeout(0);
                 }
             }
-
+            // keepalive阶段
             rp.setStage(org.apache.coyote.Constants.STAGE_KEEPALIVE);
-
+            // 如果需要出发sendfile处理
             sendfileState = processSendfile(socketWrapper);
         }
-
+        // 结束阶段
         rp.setStage(org.apache.coyote.Constants.STAGE_ENDED);
 
         if (getErrorState().isError() || (endpoint.isPaused() && !isAsync())) {

@@ -577,7 +577,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         String endpointName = getName();
         endpoint.setName(endpointName.substring(1, endpointName.length()-1));
         endpoint.setDomain(domain);
-
+        // endpoint初始化
         endpoint.init();
     }
 
@@ -753,6 +753,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
             ContainerThreadMarker.set();
 
             try {
+                //
                 if (processor == null) {
                     String negotiatedProtocol = wrapper.getNegotiatedProtocol();
                     // OpenSSL typically returns null whereas JSSE typically
@@ -797,6 +798,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                         getLog().debug(sm.getString("abstractConnectionHandler.processorPop", processor));
                     }
                 }
+                // 创建一个新的Http11Processor
                 if (processor == null) {
                     processor = getProtocol().createProcessor();
                     register(processor);
@@ -812,7 +814,9 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
                 connections.put(socket, processor);
 
                 SocketState state = SocketState.CLOSED;
+                // 只要状态是 SocketState.UPGRADING,就一直循环
                 do {
+                    // 处理核心
                     state = processor.process(wrapper, status);
 
                     if (state == SocketState.UPGRADING) {

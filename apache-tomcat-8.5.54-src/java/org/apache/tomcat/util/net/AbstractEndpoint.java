@@ -1058,16 +1058,23 @@ public abstract class AbstractEndpoint<S> {
             if (socketWrapper == null) {
                 return false;
             }
+            // 先从缓存中pop出一个SocketProcessor来
             SocketProcessorBase<S> sc = processorCache.pop();
+            // SocketEvent 封装成 SocketProcessorBase
             if (sc == null) {
+                // 创建一个新的SocketProcessor
                 sc = createSocketProcessor(socketWrapper, event);
             } else {
+                // 重置
                 sc.reset(socketWrapper, event);
             }
+            // 获取工作线程池
             Executor executor = getExecutor();
             if (dispatch && executor != null) {
+                // 使用Executor执行SocketProecssor
                 executor.execute(sc);
             } else {
+                // 在当前线程执行SocketProcessor
                 sc.run();
             }
         } catch (RejectedExecutionException ree) {
@@ -1104,6 +1111,7 @@ public abstract class AbstractEndpoint<S> {
 
     public void init() throws Exception {
         if (bindOnInit) {
+            // bind方法，抽象方法，由子类实现
             bind();
             bindState = BindState.BOUND_ON_INIT;
         }
