@@ -421,7 +421,7 @@ public abstract class LifecycleBase implements Lifecycle {
         String lifecycleEvent = state.getLifecycleEvent();
         if (lifecycleEvent != null) {
             // 这个方法内部会调用观察者的方法，
-            // 成为观察者需要实现LifecycleListener接口，实现lifecycleEvent方法，并在server.xml中配置成Listener，依据这个，可以变现自定义的观察者
+            // 成为观察者需要实现LifecycleListener接口，实现lifecycleEvent方法，并在server.xml中配置成Listener，依据这个，可以实现自定义的观察者
             fireLifecycleEvent(lifecycleEvent, data);
         }
     }
